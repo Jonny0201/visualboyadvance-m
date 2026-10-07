@@ -1,0 +1,17 @@
+Prevent pauses when changing emulation speed
+
+Prevent CoreAudio pauses when changing emulation speed. Enqueue
+completed buffers in FIFO order instead of scheduling them with
+timestamps from an old queue, and remove the per-buffer timeline
+allocation.
+
+Track buffer ownership under the same mutex in the producer and playback
+callback. Register pending buffers before enqueueing so a fast callback
+cannot finish before the bookkeeping, and wait on a condition variable
+instead of polling for space.
+
+Keep the buffer count tied to the allocated array during cleanup and
+roll back pending state if enqueueing fails.
+
+Assisted-By: Codex (GPT-6) <noreply@openai.com>
+Signed-off-by: Jonny0201 <21113168+Jonny0201@users.noreply.github.com>

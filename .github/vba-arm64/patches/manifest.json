@@ -1,0 +1,9 @@
+[
+  {
+    "id": "coreaudio-fifo",
+    "file": "coreaudio-fifo.patch",
+    "description": "Prevent pauses when changing emulation speed",
+    "source_branch": "fix/coreaudio-speedup",
+    "source_commit": null
+  }
+]
