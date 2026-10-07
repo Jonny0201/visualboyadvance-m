@@ -1,0 +1,92 @@
+name: 官方 master · Apple Silicon
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 強制建置目前官方提交
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-macos-arm64
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: 同步官方來源與檢查成功產物
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      source_sha: ${{ steps.check.outputs.source_sha }}
+      release_tag: ${{ steps.check.outputs.release_tag }}
+      recipe: ${{ steps.check.outputs.recipe }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: automation
+          persist-credentials: false
+          sparse-checkout: |
+            .github/vba-arm64
+            .github/workflows/upstream-arm64.yml
+          sparse-checkout-cone-mode: false
+      - name: 同步與判斷
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_BUILD: ${{ inputs.force_build || false }}
+        run: python3 .github/vba-arm64/check_upstream.py
+
+  build:
+    name: macOS ARM64 建置、測試與發布
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: macos-15
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+      HOMEBREW_NO_ENV_HINTS: '1'
+      UPSTREAM_SHA: ${{ needs.check.outputs.source_sha }}
+      RELEASE_TAG: ${{ needs.check.outputs.release_tag }}
+      BUILD_RECIPE: ${{ needs.check.outputs.recipe }}
+    steps:
+      - name: 取得建置設定
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+          sparse-checkout: .github/vba-arm64
+      - name: 取得已同步的官方程式碼
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.source_sha }}
+          path: source
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: 重用 Homebrew 下載快取
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: vbam-brew-${{ runner.os }}-${{ runner.arch }}-${{ needs.check.outputs.recipe }}
+          restore-keys: vbam-brew-${{ runner.os }}-${{ runner.arch }}-
+      - name: 建置獨立應用程式
+        run: bash control/.github/vba-arm64/build_macos.sh "$GITHUB_WORKSPACE/source" "$GITHUB_WORKSPACE/dist"
+      - name: 驗證 ARM64、依賴與簽章
+        run: python3 control/.github/vba-arm64/verify_bundle.py "$GITHUB_WORKSPACE/source/build/visualboyadvance-m.app"
+      - name: 發布成功產物
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 control/.github/vba-arm64/publish_release.py "$GITHUB_WORKSPACE/dist"
