@@ -2,6 +2,8 @@
 """Reject non-ARM64 or non-portable app bundles before publishing."""
 from pathlib import Path
 import plistlib
+import os
+import signal
 import subprocess
 import sys
 
@@ -38,11 +40,26 @@ def main():
     if forbidden:
         raise SystemExit('\n'.join(forbidden))
     command('codesign', '--verify', '--deep', '--strict', str(app))
-    # CLI startup only: no game or personal save file is involved.
-    smoke = subprocess.run([str(executable), '--help'], capture_output=True, text=True, timeout=45)
-    if smoke.returncode != 0:
-        raise SystemExit(f'CLI startup failed: {smoke.returncode}\n{smoke.stdout}\n{smoke.stderr}')
-    print(f'Validated native arm64 bundle with {checked} Mach-O files, compiled Metal shaders, signature, and CLI startup.')
+    # wx's macOS GUI may show help in a modal window rather than exit. Test
+    # loadability without any game, then close only this CI-owned process.
+    smoke = subprocess.Popen([str(executable), '--help'], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        stdout, stderr = smoke.communicate(timeout=8)
+        if smoke.returncode != 0:
+            raise SystemExit(f'Startup failed: {smoke.returncode}\n{stdout}\n{stderr}')
+        startup = 'help exited successfully'
+    except subprocess.TimeoutExpired:
+        os.killpg(smoke.pid, signal.SIGTERM)
+        try:
+            stdout, stderr = smoke.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            os.killpg(smoke.pid, signal.SIGKILL)
+            stdout, stderr = smoke.communicate()
+        if any(message in stderr for message in ('Library not loaded:', 'Symbol not found:', 'Bad CPU type')):
+            raise SystemExit(f'Dynamic loader error during startup:\n{stderr}')
+        startup = 'GUI remained running for 8 seconds; CI process closed after the probe'
+    print(f'Validated native arm64 bundle with {checked} Mach-O files, compiled Metal shaders, signature, and startup: {startup}.')
 
 
 if __name__ == '__main__':
