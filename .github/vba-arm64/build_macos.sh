@@ -27,7 +27,9 @@ cmake -S "$source_dir" -B "$source_dir/build" -G Ninja \
   -DENABLE_ONLINEUPDATES=OFF -DENABLE_LTO=OFF -DBUNDLE_DYLIBS=ON \
   -DBUILD_TESTING=ON -DVBAM_FETCH_TEST_ROMS=OFF
 cmake --build "$source_dir/build" --parallel 3
-ctest --test-dir "$source_dir/build" --parallel 3 --output-on-failure
+# Keep the full suite, but run scenarios sequentially on the small macOS
+# runner so process/GUI timing tests are not competing with other scenarios.
+ctest --test-dir "$source_dir/build" --parallel 1 --output-on-failure
 
 app="$source_dir/build/visualboyadvance-m.app"
 exe="$app/Contents/MacOS/visualboyadvance-m"
