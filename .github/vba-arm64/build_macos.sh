@@ -4,6 +4,7 @@ source_dir="$1"
 output_dir="$2"
 [[ "$(uname -m)" == arm64 ]] || { echo 'This job requires a native ARM64 macOS runner.'; exit 1; }
 mkdir -p "$output_dir"
+python3 "$(dirname "$0")/apply_patches.py" "$source_dir" "$output_dir/source-patches.json"
 
 # Metal compilation is required; obtain Apple's optional compiler component
 # when the runner's selected Xcode does not already provide a working one.
@@ -54,7 +55,7 @@ manifest = {
     'source_repository': 'visualboyadvance-m/visualboyadvance-m',
     'source_branch': 'master',
     'source_commit': os.environ['UPSTREAM_SHA'],
-    'source_patches': [],
+    'source_patches': json.loads((output / 'source-patches.json').read_text())['patches'],
     'pipeline_commit': os.environ['GITHUB_SHA'],
     'build_recipe': os.environ['BUILD_RECIPE'],
     'build_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -71,4 +72,4 @@ if actual != manifest['source_commit']:
     raise SystemExit('Source revision does not match the checked upstream snapshot.')
 (output / 'build-info.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 PY
-(cd "$output_dir" && shasum -a 256 ./*.zip build-info.json LICENSE.txt > SHA256SUMS.txt)
+(cd "$output_dir" && shasum -a 256 ./*.zip build-info.json source-patches.json LICENSE.txt > SHA256SUMS.txt)

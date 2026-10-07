@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 
 UPSTREAM = 'visualboyadvance-m/visualboyadvance-m'
-REQUIRED_ASSETS = {'VBA-M-macOS-arm64.zip', 'build-info.json', 'SHA256SUMS.txt'}
+REQUIRED_ASSETS = {'VBA-M-macOS-arm64.zip', 'build-info.json', 'SHA256SUMS.txt', 'source-patches.json'}
 
 
 def api(method, path, data=None, missing_ok=False):
@@ -35,8 +35,8 @@ def api(method, path, data=None, missing_ok=False):
 
 
 def recipe_hash(root):
-    files = sorted((root / '.github/vba-arm64').glob('*.py'))
-    files += sorted((root / '.github/vba-arm64').glob('*.sh'))
+    files = sorted(p for p in (root / '.github/vba-arm64').rglob('*')
+                   if p.is_file() and p.suffix in ('.py', '.sh', '.patch', '.json', '.txt'))
     files += [root / '.github/workflows/upstream-arm64.yml']
     digest = hashlib.sha256()
     for path in files:
@@ -79,7 +79,7 @@ def main():
     if not re.fullmatch('[0-9a-f]{40}', ours):
         raise RuntimeError('Unexpected upstream commit format.')
     recipe = recipe_hash(Path.cwd())
-    tag = f'upstream-{ours[:12]}-recipe-{recipe}'
+    tag = f'patched-{ours[:12]}-recipe-{recipe}'
     force = os.environ.get('FORCE_BUILD', '').lower() == 'true'
     if force:
         tag += '-run-' + os.environ['GITHUB_RUN_ID']

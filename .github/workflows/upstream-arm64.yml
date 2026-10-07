@@ -1,6 +1,11 @@
-name: 官方 master · Apple Silicon
+name: 官方 master＋CoreAudio 修正 · Apple Silicon
 
 on:
+  push:
+    branches: [automation]
+    paths:
+      - '.github/vba-arm64/**'
+      - '.github/workflows/upstream-arm64.yml'
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:
@@ -71,6 +76,7 @@ jobs:
       - name: 取得已同步的官方程式碼
         uses: actions/checkout@v4
         with:
+          repository: visualboyadvance-m/visualboyadvance-m
           ref: ${{ needs.check.outputs.source_sha }}
           path: source
           fetch-depth: 0
