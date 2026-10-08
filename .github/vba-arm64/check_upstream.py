@@ -79,7 +79,7 @@ def main():
     if not re.fullmatch('[0-9a-f]{40}', ours):
         raise RuntimeError('Unexpected upstream commit format.')
     recipe = recipe_hash(Path.cwd())
-    tag = f'patched-{ours[:12]}-recipe-{recipe}'
+    tag = f'upstream-{ours[:12]}-recipe-{recipe}'
     force = os.environ.get('FORCE_BUILD', '').lower() == 'true'
     if force:
         tag += '-run-' + os.environ['GITHUB_RUN_ID']

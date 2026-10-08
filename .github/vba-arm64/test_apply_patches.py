@@ -56,6 +56,15 @@ class ApplyTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'verified contribution'):
                 module.apply(source, manifest)
 
+    def test_retired_patch_respects_later_upstream_changes(self):
+        for content in ('fifo\n', 'changed upstream\n', 'timestamps\n'):
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as name:
+                source, manifest = self.fixture(Path(name), content)
+                manifest.write_text('[]\n')
+                result = module.apply(source, manifest)
+                self.assertEqual((source / 'audio.txt').read_text(), content)
+                self.assertEqual(result, {'patches': [], 'modified_files_sha256': {}})
+
 
 if __name__ == '__main__':
     unittest.main()

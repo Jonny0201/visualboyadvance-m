@@ -21,13 +21,23 @@ def main():
         f"- [{patch['description']}](https://github.com/{repo}/commit/{patch['source_commit']})"
         f"（{patch['status']}）" for patch in patches
     )
+    retired = '\n'.join(
+        f"- [{patch['description']}]({patch['pull_request']})：已合併上游，本地補丁已退役。"
+        for patch in manifest.get('retired_local_patches', [])
+    )
+    source_notes = (
+        '官方 master 加上額外修正的 Apple Silicon 測試建置。\n\n'
+        f'{contributions}\n\n'
+        if patches else
+        '直接建置官方 master 的 Apple Silicon 測試產物。\n\n'
+        'CoreAudio 修正已由官方採納，後續行為隨本次來源提交的官方實作更新。\n\n'
+    )
     notes.write_text(
-        '官方 master 加上 CoreAudio 修正的 Apple Silicon 測試建置。\n\n'
+        source_notes +
         f"來源提交：`{manifest['source_commit']}`\n\n"
         f"建置設定：`{manifest['build_recipe']}`\n\n"
-        '修正按住或放開 Space 後，音訊等待導致畫面停頓數秒的問題。\n\n'
-        '改以 FIFO 播放並同步緩衝區使用狀態；source-patches.json 記錄實際套用的修正與提交。\n\n'
-        f'{contributions}\n\n'
+        'source-patches.json 記錄實際套用的額外修正；build-info.json 保留已退役補丁的貢獻紀錄。\n\n'
+        f'{retired}\n\n'
         '本次建置已通過完整 CTest、ARM64 架構、動態依賴、Metal 資源、簽章與啟動檢查。\n\n'
         '這是 fork 測試產物；請以新應用程式的實機測試確認 Space 切換加速的效果。\n\n'
         '包含 Metal、OpenGL、錄影與 Lua；此建置不包含 Vulkan。\n\n'
@@ -41,7 +51,7 @@ def main():
     if not exists:
         subprocess.run(['gh', 'release', 'create', tag, '--repo', repo,
                         '--target', manifest['source_commit'], '--draft',
-                        '--title', f"CoreAudio 修正 · master {manifest['source_commit'][:12]} · macOS ARM64",
+                        '--title', f"官方 master {manifest['source_commit'][:12]} · macOS ARM64",
                         '--notes-file', str(notes)], check=True)
     subprocess.run(['gh', 'release', 'upload', tag, '--repo', repo, '--clobber',
                     *map(str, files)], check=True)

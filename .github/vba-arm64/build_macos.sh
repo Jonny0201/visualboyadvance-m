@@ -46,9 +46,9 @@ sh "$source_dir/tools/macOS/codesign_app" \
 cp "$source_dir/LICENSE" "$output_dir/LICENSE.txt"
 ditto -c -k --keepParent "$app" "$output_dir/VBA-M-macOS-arm64.zip"
 ditto -c -k --keepParent "$dsym" "$output_dir/VBA-M-macOS-arm64.dSYM.zip"
-python3 - "$source_dir" "$output_dir" <<'PY'
+python3 - "$source_dir" "$output_dir" "$(dirname "$0")/retired-patches.json" <<'PY'
 import datetime, json, os, pathlib, subprocess, sys
-source, output = map(pathlib.Path, sys.argv[1:])
+source, output, retired_path = map(pathlib.Path, sys.argv[1:])
 def command(*args):
     return subprocess.check_output(args, text=True).strip()
 manifest = {
@@ -56,6 +56,7 @@ manifest = {
     'source_branch': 'master',
     'source_commit': os.environ['UPSTREAM_SHA'],
     'source_patches': json.loads((output / 'source-patches.json').read_text())['patches'],
+    'retired_local_patches': json.loads(retired_path.read_text()),
     'pipeline_commit': os.environ['GITHUB_SHA'],
     'build_recipe': os.environ['BUILD_RECIPE'],
     'build_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),

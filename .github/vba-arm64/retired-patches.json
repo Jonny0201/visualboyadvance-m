@@ -1,0 +1,10 @@
+[
+  {
+    "id": "coreaudio-fifo",
+    "description": "Prevent pauses when changing emulation speed",
+    "source_commit": "71bd342f30038152f26ba2ae58b35c985dd21d03",
+    "upstream_merge_commit": "15c7479d7eeb5e81f29b5ddb190b261b54598f1c",
+    "pull_request": "https://github.com/visualboyadvance-m/visualboyadvance-m/pull/1590",
+    "retired_on": "2026-10-08"
+  }
+]
